@@ -200,6 +200,21 @@ module Pod
       end
     end
 
+    def variant_group_for_name_and_path_in_group(name, absolute_path, group)
+      file_path_name = Pathname.new(absolute_path)
+      relative_path = file_path_name.relative_path_from(group.real_path)
+      relative_path.each_filename do|name|
+        next if name == '.'
+        group = group[name] || group.new_group(name, name)
+      end
+
+       variant_group = new(PBXVariantGroup)
+       group.children << variant_group
+       variant_group.name = name
+       variant_group.set_source_tree(:group)
+       variant_group
+    end
+
     # Returns the file reference for the given absolute path.
     #
     # @param  [#to_s] absolute_path

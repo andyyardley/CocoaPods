@@ -179,7 +179,29 @@ module Pod
           pod_name = file_accessor.spec.name
           local = sandbox.local?(pod_name)
           paths = file_accessor.send(file_accessor_key)
-          paths.each do |path|
+          localized = paths.select     { |path| path.realpath.to_s =~ /.lproj\// }
+          non_localized = paths.reject { |path| path.realpath.to_s =~ /.lproj\// }
+
+          localized_groups = Hash.new
+          localized.each do |path|
+            result = path.realpath.to_s.scan(/(.*)\/[A-z\-]*.lproj\/([A-z0-9]*)\..[A-z]/).flatten
+            elementarray = localized_groups[result]
+            elementarray = [] unless elementarray
+            elementarray << path
+            localized_groups[result] = elementarray
+            group = pods_project.group_for_spec(file_accessor.spec.name, group_key)
+          end
+          localized_groups.each do |basepathAndName, elementarray|
+            basepath = basepathAndName[0]
+            elementname = basepathAndName[1]
+            group = pods_project.group_for_spec(file_accessor.spec.name, group_key)
+            variant_group = pods_project.variant_group_for_name_and_path_in_group(elementname, basepath, group)
+            elementarray.each do |element|
+              pods_project.add_file_reference(element, variant_group, false)
+            end
+          end
+
+          non_localized.each do |path|
             group = pods_project.group_for_spec(file_accessor.spec.name, group_key)
             pods_project.add_file_reference(path, group, local && reflect_file_system_structure_for_development)
           end
